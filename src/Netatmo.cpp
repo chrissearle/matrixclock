@@ -17,7 +17,7 @@ Netatmo::Netatmo(const char *clientId, const char *clientSecret, const char *use
 const char *Netatmo::getToken()
 {
     WiFiClientSecure wifi;
-    HttpClient client = HttpClient(wifi, "api.netatmo.com", 443);
+    HttpClient client = HttpClient(wifi, _server, 443);
 
     String postData = String() +
                       "grant_type=password" +
@@ -67,16 +67,15 @@ Weather Netatmo::getWeather()
     }
 
     WiFiClientSecure wifi;
-    HttpClient client = HttpClient(wifi, "api.netatmo.com", 443);
+    HttpClient client = HttpClient(wifi, _server, 443);
 
     client.get(String() + "/api/getstationsdata?access_token=" + token);
 
     int statusCode = client.responseStatusCode();
+    String response = client.responseBody();
 
     if (statusCode == 200)
     {
-        String response = client.responseBody();
-
         const size_t capacity = 3 * JSON_ARRAY_SIZE(1) + 2 * JSON_ARRAY_SIZE(2) + JSON_ARRAY_SIZE(3) + JSON_ARRAY_SIZE(5) + 2 * JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(4) + JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(7) + JSON_OBJECT_SIZE(8) + 2 * JSON_OBJECT_SIZE(12) + 2 * JSON_OBJECT_SIZE(13) + JSON_OBJECT_SIZE(16) + 1400;
         DynamicJsonDocument doc(capacity);
 
@@ -87,7 +86,7 @@ Weather Netatmo::getWeather()
             Serial.print(F("deserializeJson() failed: "));
             Serial.println(err.c_str());
 
-            return {-1, -1};
+            return {-3, -3};
         }
 
         JsonObject outdoor = doc["body"]["devices"][0]["modules"][0]["dashboard_data"];
@@ -96,7 +95,8 @@ Weather Netatmo::getWeather()
     }
     else
     {
-        return {-1, -1};
+        Serial.println(String() + "Failed to fetch netatmo " + statusCode + " " + response);
+        return {-2, -2};
     }
 }
 

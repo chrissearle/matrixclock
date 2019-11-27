@@ -1,1 +1,2 @@
 src/netatmo_secrets.h filter=git-crypt diff=git-crypt
+src/openweathermap_secrets.h filter=git-crypt diff=git-crypt

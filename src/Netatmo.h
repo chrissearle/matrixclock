@@ -17,6 +17,8 @@ private:
     char *_username;
     char *_password;
 
+    const char *_server = "api.netatmo.com";
+
     const char *getToken();
 
 public:
