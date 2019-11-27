@@ -1,0 +1,1 @@
+src/netatmo_secrets.h filter=git-crypt diff=git-crypt
