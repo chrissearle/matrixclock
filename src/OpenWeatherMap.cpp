@@ -10,17 +10,20 @@ OpenWeatherMap::OpenWeatherMap(const char *apiKey, const char *city)
 {
     _apiKey = strdup(apiKey);
     _city = strdup(city);
+    _weather = NULL;
 }
 
-OpenWeather OpenWeatherMap::getWeather()
+bool OpenWeatherMap::updateWeather()
 {
     WiFiClientSecure wifi;
     HttpClient client = HttpClient(wifi, _server, 443);
 
-    client.get(String() + _apiRoot + "weather?units=metric&id=" + _city + "&APPID=" + _apiKey);
+    char query[32 + strlen(_apiRoot) + strlen(_city) + strlen(_apiKey)];
+    sprintf(query, "%sweather?units=metric&id=%s&APPID=%s", _apiRoot, _city, _apiKey);
+    client.get(query);
 
     int statusCode = client.responseStatusCode();
-    String response = client.responseBody();
+    const char *response = client.responseBody().c_str();
 
     if (statusCode == 200)
     {
@@ -35,10 +38,11 @@ OpenWeather OpenWeatherMap::getWeather()
             Serial.println(err.c_str());
             Serial.println(response);
 
-            return {-1, "", "", -1, -1, -1, -1, -1};
+            return false;
         }
 
-        return {
+        // Not sure what fields I want yet
+        OpenWeather weather = {
             doc["weather"][0]["id"].as<int>(),
             doc["weather"][0]["main"].as<const char *>(),
             doc["weather"][0]["description"].as<const char *>(),
@@ -47,24 +51,43 @@ OpenWeather OpenWeatherMap::getWeather()
             doc["main"]["humidity"].as<int>(),
             doc["wind"]["speed"].as<float>(),
             doc["clouds"]["all"].as<int>()};
+
+        _weather = &weather;
+
+        return true;
     }
     else
     {
-        Serial.println(String() + "Failed to fetch weather " + statusCode + " " + response);
+        Serial.print("Failed to fetch weather ");
+        Serial.print(statusCode);
+        Serial.print(" ");
+        Serial.println(response);
     }
 
-    return {-2, "", "", -2, -2, -2, -2, -2};
+    return false;
 }
 
-void OpenWeatherMap::getForecast()
+int OpenWeatherMap::getWeatherId()
+{
+    return _weather->id;
+}
+
+float OpenWeatherMap::getTemperature()
+{
+    return _weather->temp;
+}
+
+bool OpenWeatherMap::updateForecast()
 {
     WiFiClientSecure wifi;
     HttpClient client = HttpClient(wifi, _server, 443);
 
-    client.get(String() + _apiRoot + "forecast?units=metric&cnt=40&id=" + _city + "&APPID=" + _apiKey);
+    char query[39 + strlen(_apiRoot) + strlen(_city) + strlen(_apiKey)];
+    sprintf(query, "%sforecast?units=metric&cnt=40&id=%s&APPID=%s", _apiRoot, _city, _apiKey);
+    client.get(query);
 
     int statusCode = client.responseStatusCode();
-    String response = client.responseBody();
+    const char *response = client.responseBody().c_str();
 
     if (statusCode == 200)
     {
@@ -79,7 +102,7 @@ void OpenWeatherMap::getForecast()
             Serial.println(err.c_str());
             Serial.println(response);
 
-            return;
+            return false;
         }
 
         JsonArray list = doc["list"];
@@ -88,6 +111,8 @@ void OpenWeatherMap::getForecast()
         {
             JsonObject reading = list[i];
 
+            // Not sure what to do with forecast yet
+            /*
             Serial.println(String() + "Temp " + reading["main"]["temp"].as<float>());
             Serial.println(String() + "Pressure " + reading["main"]["pressure"].as<int>());
             Serial.println(String() + "Humidity " + reading["main"]["humidity"].as<int>());
@@ -97,11 +122,19 @@ void OpenWeatherMap::getForecast()
             Serial.println(String() + "Clouds " + reading["clouds"]["all"].as<int>());
             Serial.println(String() + "Wind " + reading["wind"]["speed"].as<float>());
             Serial.println(String() + "DT " + reading["dt"].as<long>());
+            */
             Serial.println(String() + "DT " + reading["dt_txt"].as<const char *>());
         }
+
+        return true;
     }
     else
     {
-        Serial.println(String() + "Failed to fetch forecast " + statusCode + " " + response);
+        Serial.print("Failed to fetch forecast ");
+        Serial.print(statusCode);
+        Serial.print(" ");
+        Serial.println(response);
     }
+
+    return false;
 }

@@ -3,12 +3,6 @@
 
 #include "Arduino.h"
 
-typedef struct Weather
-{
-    float outsideTemp;
-    int outsideHumidity;
-} Weather;
-
 class Netatmo
 {
 private:
@@ -17,6 +11,9 @@ private:
     char *_username;
     char *_password;
 
+    float _outsideTemperature;
+    int _outsideHumidity;
+
     const char *_server = "api.netatmo.com";
 
     const char *getToken();
@@ -24,7 +21,10 @@ private:
 public:
     Netatmo(const char *clientId, const char *clientSecret, const char *username, const char *password);
 
-    Weather getWeather();
+    bool update();
+
+    float getTemperature();
+    int getHumidity();
 };
 
 #endif

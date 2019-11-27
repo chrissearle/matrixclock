@@ -20,6 +20,7 @@ class OpenWeatherMap
 private:
     char *_apiKey;
     char *_city;
+    OpenWeather *_weather;
 
     const char *_server = "api.openweathermap.org";
     const char *_apiRoot = "/data/2.5/";
@@ -27,8 +28,12 @@ private:
 public:
     OpenWeatherMap(const char *apiKey, const char *city);
 
-    OpenWeather getWeather();
-    void getForecast();
+    bool updateWeather();
+
+    int getWeatherId();
+    float getTemperature();
+
+    bool updateForecast();
 };
 
 #endif

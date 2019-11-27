@@ -12,9 +12,13 @@
 
 #include "Netatmo.h"
 #include "OpenWeatherMap.h"
+#include "Display.h"
 
 Netatmo *netatmo = NULL;
 OpenWeatherMap *openWeatherMap = NULL;
+Display *display = NULL;
+
+TaskHandle_t DisplayTask;
 
 long longLastMsg = 0;
 long longInterval = 1000 * 60 * 10;
@@ -37,32 +41,35 @@ time_t getTime()
 
 void fetch()
 {
-  Serial.println("Fetching netatmo");
-  Weather weather = netatmo->getWeather();
+  if (netatmo->update())
+  {
+    display->setWeather(netatmo->getTemperature(), netatmo->getHumidity());
+  }
 
-  Serial.println(weather.outsideTemp);
-  Serial.println(weather.outsideHumidity);
+  if (openWeatherMap->updateWeather())
+  {
+    display->setOpenWeather(openWeatherMap->getWeatherId(),
+                            openWeatherMap->getTemperature());
+  }
 
-  Serial.println("Fetching weather");
-  OpenWeather openWeather = openWeatherMap->getWeather();
-
-  Serial.println(openWeather.id);
-  Serial.println(openWeather.weather);
-  Serial.println(openWeather.description);
-  Serial.println(openWeather.temp);
-  Serial.println(openWeather.pressure);
-  Serial.println(openWeather.humidity);
-  Serial.println(openWeather.windSpeed);
-  Serial.println(openWeather.cloudPerc);
-
-  Serial.println("Fetching forecast");
-  openWeatherMap->getForecast();
+  if (openWeatherMap->updateForecast())
+  {
+    display->setOpenForecast();
+  }
 }
 
 void shortFetch()
 {
-  time_t t = CE.toLocal(now());
-  Serial.println(String() + day(t) + " " + month(t) + " " + year(t) + " - " + hour(t) + ":" + minute(t));
+  display->setTime(CE.toLocal(now()));
+}
+
+void UpdateDisplay(void *parameter)
+{
+  for (;;)
+  {
+    display->update();
+    delay(20); // Watchdog
+  }
 }
 
 void setup()
@@ -76,11 +83,21 @@ void setup()
 
   netatmo = new Netatmo(NETATMO_CLIENT_ID, NETATMO_CLIENT_SECRET, NETATMO_USERNAME, NETATMO_PASSWORD);
   openWeatherMap = new OpenWeatherMap(OWM_API_KEY, OWM_CITY);
+  display = new Display();
 
   timeClient.begin();
 
   setSyncInterval(60);
   setSyncProvider(getTime);
+
+  xTaskCreatePinnedToCore(
+      UpdateDisplay,
+      "DisplayTask",
+      10000,
+      NULL,
+      0,
+      &DisplayTask,
+      0);
 
   shortFetch();
   fetch();
